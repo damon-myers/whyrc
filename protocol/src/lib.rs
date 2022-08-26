@@ -1,8 +1,16 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum Message {
+    Ping,
+    Pong,
+    Error { cause: String },
+}
+
+impl Message {
+    pub fn error_from(cause: &str) -> Message {
+        Message::Error {
+            cause: String::from(cause),
+        }
     }
 }
