@@ -1,10 +1,18 @@
 use std::io::prelude::*;
-use std::net::{Shutdown, TcpStream};
+use std::net::{Shutdown, TcpListener, TcpStream};
+use std::sync::Arc;
+use std::thread;
 
+use rand::distributions::Alphanumeric;
+use rand::prelude::*;
 use serde_json::Error;
+
+use server::Server;
 use whyrc_protocol::{ClientMessage, ServerMessage};
 
-pub fn handle_client(mut stream: TcpStream) {
+mod server;
+
+pub fn handle_client(server: Arc<Server>, mut stream: TcpStream) {
     // TODO: How big should our buffer be?
     // - As big as the largest variant of the Message enum?
     // - What if we read too much data from the buffer to construct the next message?
@@ -52,4 +60,45 @@ fn build_response(message: ClientMessage) -> ServerMessage {
     match message {
         ClientMessage::Ping => ServerMessage::Pong,
     }
+}
+
+pub fn start_server(mut args: crate::Args) {
+    if args.password.is_none() {
+        let password = generate_password();
+        println!(
+            "No password was provided. Generated password is: {}",
+            password
+        );
+
+        args.password = Some(password);
+    }
+
+    let listen_address = format!("{}:{}", args.ip_address, args.port);
+    let listener = TcpListener::bind(listen_address).unwrap();
+
+    println!(
+        "Server started. Listening at {}:{}",
+        args.ip_address, args.port
+    );
+
+    let server = Arc::new(Server::from(args));
+
+    for stream in listener.incoming() {
+        if let Ok(stream) = stream {
+            let server_ref = server.clone();
+            thread::spawn(move || handle_client(server_ref, stream));
+        } else {
+            println!("ERROR: Connection attempted by client, but failed!");
+        }
+    }
+}
+
+fn generate_password() -> String {
+    let password: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(16)
+        .map(char::from)
+        .collect();
+
+    password
 }
