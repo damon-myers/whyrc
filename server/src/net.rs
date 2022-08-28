@@ -1,18 +1,15 @@
 use std::io::prelude::*;
 use std::net::{Shutdown, TcpListener, TcpStream};
-use std::sync::Arc;
 use std::thread;
 
 use rand::distributions::Alphanumeric;
 use rand::prelude::*;
 use serde_json::Error;
 
-use server::Server;
+use crate::server::Server;
 use whyrc_protocol::{ClientMessage, ServerMessage};
 
-mod server;
-
-pub fn handle_client(server: Arc<Server>, mut stream: TcpStream) {
+pub fn handle_client(server: Server, mut stream: TcpStream) {
     // TODO: How big should our buffer be?
     // - As big as the largest variant of the Message enum?
     // - What if we read too much data from the buffer to construct the next message?
@@ -22,7 +19,7 @@ pub fn handle_client(server: Arc<Server>, mut stream: TcpStream) {
     while match stream.read(&mut buffer) {
         Ok(size) => {
             let message_str = std::str::from_utf8(&buffer[..size]).unwrap();
-            handle_message(&mut stream, message_str);
+            handle_message(&server, &mut stream, message_str);
             true
         }
         Err(_) => {
@@ -36,11 +33,11 @@ pub fn handle_client(server: Arc<Server>, mut stream: TcpStream) {
     } {}
 }
 
-fn handle_message(stream: &mut TcpStream, message_str: &str) {
+fn handle_message(server: &Server, stream: &mut TcpStream, message_str: &str) {
     let message: Result<ClientMessage, Error> = serde_json::from_str(message_str);
 
     let response: ServerMessage = if let Ok(message) = message {
-        build_response(message)
+        server.handle_message(message)
     } else {
         println!(
             "Could not parse message from {}",
@@ -54,12 +51,6 @@ fn handle_message(stream: &mut TcpStream, message_str: &str) {
 
     stream.write_all(serialized_response.as_bytes()).unwrap();
     stream.flush().unwrap();
-}
-
-fn build_response(message: ClientMessage) -> ServerMessage {
-    match message {
-        ClientMessage::Ping => ServerMessage::Pong,
-    }
 }
 
 pub fn start_server(mut args: crate::Args) {
@@ -81,12 +72,12 @@ pub fn start_server(mut args: crate::Args) {
         args.ip_address, args.port
     );
 
-    let server = Arc::new(Server::from(args));
+    let server = Server::from(args);
 
     for stream in listener.incoming() {
         if let Ok(stream) = stream {
-            let server_ref = server.clone();
-            thread::spawn(move || handle_client(server_ref, stream));
+            let server_clone = server.clone();
+            thread::spawn(move || handle_client(server_clone, stream));
         } else {
             println!("ERROR: Connection attempted by client, but failed!");
         }
