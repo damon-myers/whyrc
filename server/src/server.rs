@@ -31,6 +31,7 @@ impl Server {
         match message {
             ClientMessage::Ping => ServerMessage::Pong,
             ClientMessage::CreateRoom { name } => self.add_room(name),
+            ClientMessage::DeleteRoom { name } => self.remove_room(name),
             ClientMessage::ListRooms { page, page_size } => self.list_rooms(page, page_size),
         }
     }
@@ -52,7 +53,24 @@ impl Server {
         }
     }
 
-    fn list_rooms(&self, page: u32, page_size: u32) -> ServerMessage {
+    fn remove_room(&self, room_name: String) -> ServerMessage {
+        let writable_rooms = self.rooms.write();
+
+        if writable_rooms.is_err() {
+            return ServerMessage::error_from("Failed to obtain rooms lock");
+        }
+
+        let mut writable_rooms = writable_rooms.unwrap();
+        if !writable_rooms.contains_key(&room_name) {
+            let cause = format!("Room with name {} doesn't exist", room_name);
+            ServerMessage::error_from(&cause)
+        } else {
+            writable_rooms.remove(&room_name);
+            ServerMessage::Ack
+        }
+    }
+
+    fn list_rooms(&self, page: usize, page_size: usize) -> ServerMessage {
         let readable_rooms = self.rooms.read();
 
         if let Ok(readable_rooms) = readable_rooms {
