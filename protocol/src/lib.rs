@@ -10,6 +10,7 @@ pub enum ClientMessage {
     CreateRoom { name: String },
     DeleteRoom { name: String },
     ListRooms { page: usize, page_size: usize },
+    Login { username: String, password: String },
 }
 
 #[derive(Serialize, Deserialize, Debug)]

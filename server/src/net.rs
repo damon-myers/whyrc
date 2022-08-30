@@ -1,57 +1,14 @@
-use std::io::prelude::*;
-use std::net::{Shutdown, TcpListener, TcpStream};
+use std::net::TcpListener;
 use std::thread;
 
 use rand::distributions::Alphanumeric;
 use rand::prelude::*;
-use serde_json::Error;
 
 use crate::server::Server;
-use whyrc_protocol::{ClientMessage, ServerMessage};
 
-pub fn handle_client(server: Server, mut stream: TcpStream) {
-    // TODO: How big should our buffer be?
-    // - As big as the largest variant of the Message enum?
-    // - What if we read too much data from the buffer to construct the next message?
-    //   - not possible stream.read will tell us how many bytes were read
-    let mut buffer = [0; 128];
+pub use connection::*;
 
-    while match stream.read(&mut buffer) {
-        Ok(size) => {
-            let message_str = std::str::from_utf8(&buffer[..size]).unwrap();
-            handle_message(&server, &mut stream, message_str);
-            true
-        }
-        Err(_) => {
-            println!(
-                "An error occurred, terminating connection with {}",
-                stream.peer_addr().unwrap()
-            );
-            stream.shutdown(Shutdown::Both).unwrap();
-            false
-        }
-    } {}
-}
-
-fn handle_message(server: &Server, stream: &mut TcpStream, message_str: &str) {
-    let message: Result<ClientMessage, Error> = serde_json::from_str(message_str);
-
-    let response: ServerMessage = if let Ok(message) = message {
-        server.handle_message(message)
-    } else {
-        println!(
-            "Could not parse message from {}",
-            stream.peer_addr().unwrap()
-        );
-
-        ServerMessage::error_from("Could not parse that message")
-    };
-
-    let serialized_response = serde_json::to_string(&response).unwrap();
-
-    stream.write_all(serialized_response.as_bytes()).unwrap();
-    stream.flush().unwrap();
-}
+mod connection;
 
 pub fn start_server(mut args: crate::Args) {
     if args.password.is_none() {
@@ -77,7 +34,13 @@ pub fn start_server(mut args: crate::Args) {
     for stream in listener.incoming() {
         if let Ok(stream) = stream {
             let server_clone = server.clone();
-            thread::spawn(move || handle_client(server_clone, stream));
+            thread::spawn(move || {
+                let mut connection = Connection::from(stream);
+                // TODO: Store connections in the Server state in such a way that
+                //       any thread can send data to the TcpStream in the connection
+                // server_clone.add_connection(connection);
+                connection.listen(server_clone)
+            });
         } else {
             println!("ERROR: Connection attempted by client, but failed!");
         }
