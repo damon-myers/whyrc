@@ -30,7 +30,11 @@ impl Server {
         }
     }
 
-    pub fn execute_command(&mut self, message: ClientMessage) -> ServerMessage {
+    pub fn execute_command(
+        &mut self,
+        peer_addr: SocketAddr,
+        message: ClientMessage,
+    ) -> ServerMessage {
         match message {
             ClientMessage::Ping => ServerMessage::Pong,
             ClientMessage::CreateRoom { name } => self.chat.add_room(name),
@@ -38,8 +42,8 @@ impl Server {
             ClientMessage::ListRooms { page, page_size } => {
                 self.chat.list_rooms(page, Some(page_size))
             }
-            ClientMessage::Login { .. } => {
-                ServerMessage::error_from("Got a login message where server shouldn't have")
+            ClientMessage::Login { username, password } => {
+                self.login_user(peer_addr, username, password)
             }
         }
     }
@@ -57,7 +61,18 @@ impl Server {
         Ok(())
     }
 
-    pub fn get_password(&self) -> &str {
-        &self.password
+    fn login_user(
+        &mut self,
+        peer_addr: SocketAddr,
+        username: String,
+        password: String,
+    ) -> ServerMessage {
+        if password != self.password {
+            return ServerMessage::error_from("Invalid password provided. Please try again.");
+        }
+
+        self.chat.set_username(peer_addr, username);
+
+        ServerMessage::Ack
     }
 }

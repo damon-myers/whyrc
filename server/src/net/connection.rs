@@ -1,24 +1,27 @@
 use std::{
     io::prelude::*,
-    net::{Shutdown, TcpStream},
+    net::{Shutdown, SocketAddr, TcpStream},
 };
 
 use whyrc_protocol::{ClientMessage, ServerMessage};
 
 use crate::net::Server;
 
+/// Thin wrapper around a TcpStream that forwards messages to the Server
 pub struct Connection {
     active_stream: TcpStream,
+    peer_addr: SocketAddr,
     server: Server,
-    username: Option<String>, // if not logged in, will be None
 }
 
 impl Connection {
     pub fn from(stream: TcpStream, server_clone: Server) -> Self {
+        let peer_addr = stream.peer_addr().unwrap();
+
         Connection {
             active_stream: stream,
             server: server_clone,
-            username: None,
+            peer_addr,
         }
     }
 
@@ -47,20 +50,11 @@ impl Connection {
         } {}
     }
 
-    pub fn set_username(&mut self, username: String) -> &mut Self {
-        self.username = Some(username);
-
-        self
-    }
-
     fn handle_message(&mut self, message_str: &str) {
         let message: Result<ClientMessage, serde_json::Error> = serde_json::from_str(message_str);
 
         let response: ServerMessage = if let Ok(message) = message {
-            match message {
-                ClientMessage::Login { username, password } => self.login_user(username, password),
-                _ => self.server.execute_command(message),
-            }
+            self.server.execute_command(self.peer_addr, message)
         } else {
             println!(
                 "Could not parse message from {}",
@@ -76,15 +70,5 @@ impl Connection {
             .write_all(serialized_response.as_bytes())
             .unwrap();
         self.active_stream.flush().unwrap();
-    }
-
-    fn login_user(&mut self, username: String, password: String) -> ServerMessage {
-        if password != self.server.get_password() {
-            return ServerMessage::error_from("Invalid password provided. Please try again.");
-        }
-
-        self.set_username(username);
-
-        ServerMessage::Ack
     }
 }

@@ -1,6 +1,6 @@
 use std::{
     collections::BTreeMap,
-    net::SocketAddrV4,
+    net::SocketAddr,
     sync::{Arc, RwLock},
 };
 
@@ -9,7 +9,10 @@ pub use room::*;
 use whyrc_protocol::{RoomList, ServerMessage};
 
 pub type RoomMap = BTreeMap<String, Room>;
-pub type UserMap = BTreeMap<SocketAddrV4, String>; // ip address & port -> username
+
+// ip address & port -> username
+// key will not be present for a user that isn't logged in
+pub type UserMap = BTreeMap<SocketAddr, String>;
 
 const DEFAULT_PAGE_SIZE: usize = 20;
 
@@ -70,5 +73,19 @@ impl Chat {
             page,
             page_size,
         ))
+    }
+
+    pub fn set_username(&mut self, peer_addr: SocketAddr, username: String) -> ServerMessage {
+        let mut writable_users = match self.users.write() {
+            Ok(lock) => lock,
+            Err(_) => return ServerMessage::error_from("Failed to get users lock"),
+        };
+
+        writable_users.insert(peer_addr, username);
+
+        // don't keep lock longer than needed
+        drop(writable_users);
+
+        self.list_rooms(0, None)
     }
 }
