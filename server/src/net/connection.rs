@@ -5,24 +5,25 @@ use std::{
 
 use whyrc_protocol::{ClientMessage, ServerMessage};
 
-use crate::server::Server;
+use crate::net::Server;
 
-type ConnectionId = usize;
 pub struct Connection {
     active_stream: TcpStream,
+    server: Server,
     username: Option<String>, // if not logged in, will be None
 }
 
 impl Connection {
-    pub fn from(stream: TcpStream) -> Self {
+    pub fn from(stream: TcpStream, server_clone: Server) -> Self {
         Connection {
             active_stream: stream,
+            server: server_clone,
             username: None,
         }
     }
 
     /// Reads the wrapped TcpStream for messages and responds with ServerMessages
-    pub fn listen(&mut self, server: Server) {
+    pub fn listen(&mut self) {
         // TODO: How big should our buffer be?
         // - As big as the largest variant of the Message enum?
         // - What if we read too much data from the buffer to construct the next message?
@@ -32,7 +33,7 @@ impl Connection {
         while match self.active_stream.read(&mut buffer) {
             Ok(size) => {
                 let message_str = std::str::from_utf8(&buffer[..size]).unwrap();
-                self.handle_message(&server, message_str);
+                self.handle_message(message_str);
                 true
             }
             Err(_) => {
@@ -52,11 +53,14 @@ impl Connection {
         self
     }
 
-    fn handle_message(&mut self, server: &Server, message_str: &str) {
+    fn handle_message(&mut self, message_str: &str) {
         let message: Result<ClientMessage, serde_json::Error> = serde_json::from_str(message_str);
 
         let response: ServerMessage = if let Ok(message) = message {
-            server.execute_message(message, self)
+            match message {
+                ClientMessage::Login { username, password } => self.login_user(username, password),
+                _ => self.server.execute_command(message),
+            }
         } else {
             println!(
                 "Could not parse message from {}",
@@ -72,5 +76,15 @@ impl Connection {
             .write_all(serialized_response.as_bytes())
             .unwrap();
         self.active_stream.flush().unwrap();
+    }
+
+    fn login_user(&mut self, username: String, password: String) -> ServerMessage {
+        if password != self.server.get_password() {
+            return ServerMessage::error_from("Invalid password provided. Please try again.");
+        }
+
+        self.set_username(username);
+
+        ServerMessage::Ack
     }
 }

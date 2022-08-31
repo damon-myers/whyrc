@@ -1,14 +1,15 @@
 use std::net::TcpListener;
+use std::sync::{Arc, RwLock};
 use std::thread;
 
 use rand::distributions::Alphanumeric;
 use rand::prelude::*;
 
-use crate::server::Server;
+mod connection;
+mod server;
 
 pub use connection::*;
-
-mod connection;
+pub use server::*;
 
 pub fn start_server(mut args: crate::Args) {
     if args.password.is_none() {
@@ -29,17 +30,17 @@ pub fn start_server(mut args: crate::Args) {
         args.ip_address, args.port
     );
 
-    let server = Server::from(args);
+    let mut server = Server::from(args);
 
     for stream in listener.incoming() {
         if let Ok(stream) = stream {
+            let stream_clone = stream.try_clone().unwrap();
+            server.add_stream(stream_clone).unwrap();
+
             let server_clone = server.clone();
             thread::spawn(move || {
-                let mut connection = Connection::from(stream);
-                // TODO: Store connections in the Server state in such a way that
-                //       any thread can send data to the TcpStream in the connection
-                // server_clone.add_connection(connection);
-                connection.listen(server_clone)
+                let mut connection = Connection::from(stream, server_clone);
+                connection.listen()
             });
         } else {
             println!("ERROR: Connection attempted by client, but failed!");

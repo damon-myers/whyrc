@@ -1,8 +1,7 @@
 use clap::Parser;
 
+mod chat;
 mod net;
-mod room;
-mod server;
 
 /// Binary application that runs a whyrc server
 #[derive(Parser, Debug)]

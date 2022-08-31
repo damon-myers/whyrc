@@ -1,7 +1,7 @@
 pub struct Room {
     name: String,
     // messages: BTreeMap<Date, Message>
-    // active_users: BTreeMap<
+    // active_users: BTreeMap<String, SocketAddrV4>
 }
 
 impl Room {
