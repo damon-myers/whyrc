@@ -1,30 +1,19 @@
-use whyrc_protocol::ClientMessage;
+use crossterm::{
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyEvent},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use ui::{UIError, UI};
 
-fn main() {
-    let ping = ClientMessage::Ping;
+mod events;
+mod ui;
 
-    let serialized_ping = serde_json::to_string(&ping).unwrap();
-    println!("Serialized ping:\n{}", serialized_ping);
-    println!("Number of bytes: {}", serialized_ping.as_bytes().len());
+fn main() -> Result<(), UIError> {
+    let receiver = events::create_event_thread();
 
-    let create_room = ClientMessage::CreateRoom {
-        name: String::from("test"),
-    };
-    let serialized_create_room = serde_json::to_string(&create_room).unwrap();
-    println!("Serialized create_room:\n{}", serialized_create_room);
-    println!(
-        "Number of bytes: {}",
-        serialized_create_room.as_bytes().len()
-    );
+    let mut ui = UI::from(receiver);
 
-    let list_rooms = ClientMessage::ListRooms {
-        page: 0,
-        page_size: 100,
-    };
-    let serialized_list_rooms = serde_json::to_string(&list_rooms).unwrap();
-    println!("Serialized list_rooms:\n{}", serialized_list_rooms);
-    println!(
-        "Number of bytes: {}",
-        serialized_list_rooms.as_bytes().len()
-    );
+    ui.render_loop()?;
+
+    Ok(())
 }
