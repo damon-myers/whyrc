@@ -13,7 +13,9 @@ pub enum Event<I> {
     Tick,
 }
 
-pub fn create_event_thread() -> mpsc::Receiver<Event<KeyEvent>> {
+/// Spawns a thread that will poll for inputs and write them to a mpsc channel
+/// Returns the receiver for this channel so that another thread can handle inputs
+pub fn spawn_event_thread() -> mpsc::Receiver<Event<KeyEvent>> {
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(EVENT_TICK_RATE_MS);
     thread::spawn(move || {

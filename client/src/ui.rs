@@ -17,7 +17,13 @@ use tui::{
 
 use crate::events::Event;
 
+use self::menu::Menu;
+
+mod menu;
+mod room_list;
+
 pub struct UI {
+    menu: Menu,
     event_receiver: Receiver<Event<KeyEvent>>,
     terminal: Terminal<CrosstermBackend<Stdout>>,
 }
@@ -49,6 +55,7 @@ impl UI {
         let terminal = Terminal::new(backend).expect("can create terminal with crossterm backend");
 
         UI {
+            menu: Menu::default(),
             event_receiver,
             terminal,
         }
@@ -56,6 +63,7 @@ impl UI {
 
     pub fn render_loop(&mut self) -> Result<(), UIError> {
         loop {
+            // get inputs
             match self.event_receiver.recv()? {
                 Event::Input(event) => match event.code {
                     KeyCode::Char('q') => {
@@ -67,22 +75,23 @@ impl UI {
                 Event::Tick => {}
             }
 
-            self.terminal.draw(Self::draw)?;
+            // render
+            self.terminal.draw(|frame| {
+                let chunks = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Length(3), Constraint::Min(6)].as_ref())
+                    .split(frame.size());
+
+                let menu_block = Block::default().title("menu").borders(Borders::ALL);
+                frame.render_widget(menu_block, chunks[0]);
+                self.menu.render(frame, chunks[0]);
+
+                let main_block = Block::default().borders(Borders::ALL);
+                frame.render_widget(main_block, chunks[1]);
+            })?;
         }
 
         Ok(())
-    }
-
-    fn draw<B: Backend>(frame: &mut Frame<B>) {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(10), Constraint::Percentage(90)].as_ref())
-            .split(frame.size());
-        let menu_block = Block::default().title("menu").borders(Borders::ALL);
-        frame.render_widget(menu_block, chunks[0]);
-
-        let main_block = Block::default().borders(Borders::ALL);
-        frame.render_widget(main_block, chunks[1]);
     }
 
     fn reset_terminal(&mut self) -> Result<(), io::Error> {
