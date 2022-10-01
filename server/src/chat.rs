@@ -8,6 +8,8 @@ mod room;
 pub use room::*;
 use whyrc_protocol::{RoomList, ServerMessage};
 
+use crate::net::Server;
+
 pub type RoomMap = BTreeMap<String, Room>;
 
 // ip address & port -> username
@@ -81,11 +83,23 @@ impl Chat {
             Err(_) => return ServerMessage::error_from("Failed to get users lock"),
         };
 
+        println!("Existing users:");
+        let existing_users: Vec<&String> = writable_users.values().collect();
+        println!("{:#?}", existing_users);
+
+        let username_exists = writable_users
+            .values()
+            .any(|existing_username| &username == existing_username);
+
+        println!("{:#?}", username_exists);
+        if username_exists {
+            return ServerMessage::Error {
+                cause: format!("A user with name \"{}\" already exists!", username),
+            };
+        }
+
         writable_users.insert(peer_addr, username);
 
-        // don't keep lock longer than needed
-        drop(writable_users);
-
-        self.list_rooms(0, None)
+        ServerMessage::Ack
     }
 }

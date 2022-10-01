@@ -71,8 +71,10 @@ impl Server {
             return ServerMessage::error_from("Invalid password provided. Please try again.");
         }
 
-        self.chat.set_username(peer_addr, username);
-
-        ServerMessage::Ack
+        let set_username_result = self.chat.set_username(peer_addr, username);
+        match set_username_result {
+            ServerMessage::Ack => ServerMessage::LoginSuccessful,
+            _ => set_username_result,
+        }
     }
 }

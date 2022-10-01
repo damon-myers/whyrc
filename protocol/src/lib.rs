@@ -4,6 +4,8 @@ pub use room_list::RoomList;
 
 mod room_list;
 
+pub const TCP_BUFFER_SIZE: usize = 2048;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientMessage {
     Ping,
@@ -17,6 +19,7 @@ pub enum ClientMessage {
 pub enum ServerMessage {
     Ack,
     Pong,
+    LoginSuccessful,
     RoomList(RoomList),
     Error { cause: String },
 }

@@ -3,7 +3,7 @@ use std::{
     net::{Shutdown, SocketAddr, TcpStream},
 };
 
-use whyrc_protocol::{ClientMessage, ServerMessage};
+use whyrc_protocol::{ClientMessage, ServerMessage, TCP_BUFFER_SIZE};
 
 use crate::net::Server;
 
@@ -27,11 +27,7 @@ impl Connection {
 
     /// Reads the wrapped TcpStream for messages and responds with ServerMessages
     pub fn listen(&mut self) {
-        // TODO: How big should our buffer be?
-        // - As big as the largest variant of the Message enum?
-        // - What if we read too much data from the buffer to construct the next message?
-        //   - not possible stream.read will tell us how many bytes were read
-        let mut buffer = [0; 128];
+        let mut buffer = [0; TCP_BUFFER_SIZE];
 
         while match self.active_stream.read(&mut buffer) {
             Ok(size) => {
