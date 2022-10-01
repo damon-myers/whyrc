@@ -6,7 +6,7 @@ use std::{
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, KeyCode, KeyEvent},
     execute,
-    terminal::{enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use tui::{
     backend::CrosstermBackend,
@@ -96,7 +96,7 @@ impl UI {
 
     fn reset_terminal(&mut self) -> Result<(), io::Error> {
         // restore terminal
-        enable_raw_mode()?;
+        disable_raw_mode()?;
         execute!(
             self.terminal.backend_mut(),
             LeaveAlternateScreen,
