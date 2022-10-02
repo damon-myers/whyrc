@@ -1,77 +1,59 @@
-use std::{
-    io::{self, prelude::*, Write},
-    net::{Shutdown, TcpStream},
-};
+use std::{net::TcpStream, sync::mpsc, thread, thread::JoinHandle};
 
-use whyrc_protocol::{ClientMessage, ServerMessage, TCP_BUFFER_SIZE};
+use whyrc_protocol::{ClientMessage, ServerMessage};
+
+use self::server_connection::*;
+use crate::Args;
 
 pub use self::error::*;
 
 mod error;
+mod server_connection;
 
-pub struct ServerConnection {
-    stream: TcpStream,
+pub struct NetworkHandles {
+    // listen to this receiver for messages being sent by the server
+    pub receiver: mpsc::Receiver<ServerMessage>,
+    // send to this sender to send messages to the server
+    pub sender: mpsc::Sender<ClientMessage>,
+    pub thread_handle: JoinHandle<()>,
 }
 
-impl ServerConnection {
-    pub fn from(stream: TcpStream) -> Self {
-        ServerConnection { stream }
-    }
+/// Creates and setups a networking thread
+///
+/// 1. Opens a TCP connection using the passed-in args
+/// 2. Attempts to login to the server using the passed-in args
+/// 3. If successful, sets up a thread that will read/write to the encapsulated TcpStream
+///     by reading from one of the mpsc channels that gets returned
+/// 4. Will notify of messages by sending them to one of the mpsc channels that gets returned
+pub fn setup_network_thread(args: Args) -> Result<NetworkHandles, NetworkSetupError> {
+    let Args {
+        username,
+        password,
+        server_address,
+        port,
+    } = args;
 
-    /// Attempt to login to the server given a username and server_password
-    /// Blocks until a response is received from the server
-    /// Can potentially fail due to:
-    /// - invalid password
-    /// - already claimed username
-    /// - network issues
-    pub fn try_login(&mut self, username: &str, server_password: &str) -> Result<(), LoginError> {
-        println!("Attempting to login to server...");
+    let stream = TcpStream::connect(format!("{}:{}", server_address, port))?;
 
-        let login_message = ClientMessage::Login {
-            username: String::from(username),
-            password: String::from(server_password),
-        };
+    let mut connection = ServerConnection::from(stream);
 
-        let serialized_login = serde_json::to_string(&login_message).unwrap();
+    connection.try_login(&username, &password)?;
 
-        self.stream.write_all(serialized_login.as_bytes())?;
+    println!("Successfully logged in as {}", username);
 
-        let response = self.receive_message();
+    // ui will send to ui_tx, network thread will read from net_rx
+    let (ui_tx, net_rx) = mpsc::channel();
 
-        match response {
-            Ok(message) => match message {
-                ServerMessage::LoginSuccessful => Ok(()),
-                ServerMessage::Error { cause } => Err(LoginError::InvalidCredentials(cause)),
-                _ => Err(LoginError::InvalidResponse),
-            },
-            Err(err) => Err(LoginError::ConnectionError(err)),
-        }
-    }
+    // net will send to net_tx, ui will read from ui_rx
+    let (net_tx, ui_rx) = mpsc::channel();
 
-    pub fn receive_message(&mut self) -> Result<ServerMessage, ReceiveMessageError> {
-        let mut buffer = [0; TCP_BUFFER_SIZE];
+    let thread_handle = thread::spawn(move || {
+        connection.listen(net_rx, net_tx);
+    });
 
-        match self.stream.read(&mut buffer) {
-            Ok(size) => {
-                let message_str = std::str::from_utf8(&buffer[..size]).unwrap();
-                let message = serde_json::from_str(message_str)?;
-
-                Ok(message)
-            }
-            Err(err) => {
-                println!(
-                    "An error occurred, terminating connection with {}",
-                    self.stream.peer_addr().unwrap()
-                );
-                self.stream.shutdown(Shutdown::Both).unwrap();
-                Err(ReceiveMessageError::TcpError(err))
-            }
-        }
-    }
-}
-
-pub fn try_connect(host: &str, port: u16) -> io::Result<ServerConnection> {
-    let stream = TcpStream::connect(format!("{}:{}", host, port))?;
-
-    Ok(ServerConnection::from(stream))
+    Ok(NetworkHandles {
+        receiver: ui_rx,
+        sender: ui_tx,
+        thread_handle,
+    })
 }

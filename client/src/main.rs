@@ -1,7 +1,6 @@
 use std::io;
 
 use clap::Parser;
-use net::try_connect;
 
 mod events;
 mod net;
@@ -26,6 +25,7 @@ pub struct Args {
 #[derive(Debug)]
 pub enum ClientError {
     ConnectionError(io::Error),
+    NetworkSetupError(net::NetworkSetupError),
     LoginError(net::LoginError),
     UIError(ui::UIError),
 }
@@ -33,6 +33,12 @@ pub enum ClientError {
 impl From<io::Error> for ClientError {
     fn from(err: io::Error) -> Self {
         ClientError::ConnectionError(err)
+    }
+}
+
+impl From<net::NetworkSetupError> for ClientError {
+    fn from(err: net::NetworkSetupError) -> Self {
+        ClientError::NetworkSetupError(err)
     }
 }
 
@@ -49,19 +55,21 @@ impl From<ui::UIError> for ClientError {
 }
 
 fn main() -> Result<(), ClientError> {
-    let receiver = events::spawn_event_thread();
+    let event_receiver = events::spawn_event_thread();
 
     let args = Args::parse();
 
-    let mut server_conn = try_connect(&args.server_address, args.port)?;
+    let net::NetworkHandles {
+        receiver: net_receiver,
+        sender: net_sender,
+        thread_handle,
+    } = net::setup_network_thread(args)?;
 
-    server_conn.try_login(&args.username, &args.password)?;
-
-    println!("Successfully logged in as {}", args.username);
-
-    let mut ui = ui::UI::from(receiver);
+    let mut ui = ui::UI::from(event_receiver, net_receiver, net_sender);
 
     ui.render_loop()?;
+
+    thread_handle.join();
 
     Ok(())
 }

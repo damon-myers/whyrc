@@ -4,29 +4,29 @@ use std::io;
 pub enum LoginError {
     InvalidCredentials(String),
     InvalidResponse,
-    ConnectionError(ReceiveMessageError),
-}
-
-impl From<io::Error> for LoginError {
-    fn from(err: io::Error) -> Self {
-        LoginError::ConnectionError(ReceiveMessageError::from(err))
-    }
 }
 
 #[derive(Debug)]
-pub enum ReceiveMessageError {
+pub enum NetworkSetupError {
+    LoginError(LoginError),
     DeserializationError(serde_json::Error),
     TcpError(io::Error),
 }
 
-impl From<serde_json::Error> for ReceiveMessageError {
+impl From<serde_json::Error> for NetworkSetupError {
     fn from(err: serde_json::Error) -> Self {
-        ReceiveMessageError::DeserializationError(err)
+        NetworkSetupError::DeserializationError(err)
     }
 }
 
-impl From<io::Error> for ReceiveMessageError {
+impl From<io::Error> for NetworkSetupError {
     fn from(err: io::Error) -> Self {
-        ReceiveMessageError::TcpError(err)
+        NetworkSetupError::TcpError(err)
+    }
+}
+
+impl From<LoginError> for NetworkSetupError {
+    fn from(err: LoginError) -> Self {
+        NetworkSetupError::LoginError(err)
     }
 }

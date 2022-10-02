@@ -1,6 +1,6 @@
 use std::{
     io::{self, Stdout},
-    sync::mpsc::{self, Receiver},
+    sync::mpsc::{self, Receiver, Sender},
 };
 
 use crossterm::{
@@ -14,6 +14,7 @@ use tui::{
     widgets::{Block, Borders},
     Terminal,
 };
+use whyrc_protocol::{ClientMessage, ServerMessage};
 
 use crate::events::Event;
 
@@ -25,6 +26,8 @@ mod room_list;
 pub struct UI {
     menu: Menu,
     event_receiver: Receiver<Event<KeyEvent>>,
+    net_receiver: Receiver<ServerMessage>,
+    net_sender: Sender<ClientMessage>,
     terminal: Terminal<CrosstermBackend<Stdout>>,
 }
 
@@ -47,7 +50,11 @@ impl From<io::Error> for UIError {
 }
 
 impl UI {
-    pub fn from(event_receiver: Receiver<Event<KeyEvent>>) -> Self {
+    pub fn from(
+        event_receiver: Receiver<Event<KeyEvent>>,
+        net_receiver: Receiver<ServerMessage>,
+        net_sender: Sender<ClientMessage>,
+    ) -> Self {
         enable_raw_mode().expect("can enable raw mode in terminal");
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen, EnableMouseCapture).expect("can set terminal modes");
@@ -57,6 +64,8 @@ impl UI {
         UI {
             menu: Menu::default(),
             event_receiver,
+            net_receiver,
+            net_sender,
             terminal,
         }
     }
