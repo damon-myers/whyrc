@@ -40,7 +40,12 @@ pub fn start_server(mut args: crate::Args) {
             let server_clone = server.clone();
             thread::spawn(move || {
                 let mut connection = Connection::from(stream, server_clone);
-                connection.listen()
+                connection.listen();
+
+                println!(
+                    "Connection for peer {} is being closed.",
+                    connection.peer_addr
+                )
             });
         } else {
             println!("ERROR: Connection attempted by client, but failed!");

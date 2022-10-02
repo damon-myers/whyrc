@@ -10,8 +10,8 @@ use crate::net::Server;
 /// Thin wrapper around a TcpStream that forwards messages to the Server
 pub struct Connection {
     active_stream: TcpStream,
-    peer_addr: SocketAddr,
     server: Server,
+    pub peer_addr: SocketAddr,
 }
 
 impl Connection {
@@ -31,16 +31,19 @@ impl Connection {
 
         while match self.active_stream.read(&mut buffer) {
             Ok(size) => {
-                let message_str = std::str::from_utf8(&buffer[..size]).unwrap();
-                self.handle_message(message_str);
-                true
+                if size == 0 {
+                    false
+                } else {
+                    let message_str = std::str::from_utf8(&buffer[..size]).unwrap();
+                    self.handle_message(message_str);
+                    true
+                }
             }
             Err(_) => {
                 println!(
                     "An error occurred, terminating connection with {}",
                     self.active_stream.peer_addr().unwrap()
                 );
-                self.active_stream.shutdown(Shutdown::Both).unwrap();
                 false
             }
         } {}
@@ -66,5 +69,15 @@ impl Connection {
             .write_all(serialized_response.as_bytes())
             .unwrap();
         self.active_stream.flush().unwrap();
+    }
+}
+
+impl Drop for Connection {
+    fn drop(&mut self) {
+        // remove this user from the server
+        self.server.remove_user(self.peer_addr);
+
+        // close this TCP connection
+        self.active_stream.shutdown(Shutdown::Both).unwrap();
     }
 }

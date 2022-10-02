@@ -77,4 +77,8 @@ impl Server {
             _ => set_username_result,
         }
     }
+
+    pub fn remove_user(&self, peer_addr: SocketAddr) {
+        self.chat.remove_user(peer_addr);
+    }
 }

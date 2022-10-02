@@ -83,15 +83,10 @@ impl Chat {
             Err(_) => return ServerMessage::error_from("Failed to get users lock"),
         };
 
-        println!("Existing users:");
-        let existing_users: Vec<&String> = writable_users.values().collect();
-        println!("{:#?}", existing_users);
-
         let username_exists = writable_users
             .values()
             .any(|existing_username| &username == existing_username);
 
-        println!("{:#?}", username_exists);
         if username_exists {
             return ServerMessage::Error {
                 cause: format!("A user with name \"{}\" already exists!", username),
@@ -101,5 +96,17 @@ impl Chat {
         writable_users.insert(peer_addr, username);
 
         ServerMessage::Ack
+    }
+
+    pub fn remove_user(&self, peer_addr: SocketAddr) {
+        let mut writable_users = match self.users.write() {
+            Ok(lock) => lock,
+            Err(_) => {
+                println!("Failed to get lock when removing user for {}", peer_addr);
+                return;
+            }
+        };
+
+        writable_users.remove(&peer_addr);
     }
 }
