@@ -8,7 +8,7 @@ mod room;
 pub use room::*;
 use whyrc_protocol::{RoomList, ServerMessage};
 
-use crate::net::Server;
+
 
 pub type RoomMap = BTreeMap<String, Room>;
 
