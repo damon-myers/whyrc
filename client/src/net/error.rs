@@ -4,6 +4,7 @@ use std::io;
 pub enum LoginError {
     InvalidCredentials(String),
     InvalidResponse,
+    ServerTimeout,
 }
 
 #[derive(Debug)]
