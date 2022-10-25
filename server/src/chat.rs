@@ -1,5 +1,6 @@
 use std::{
     collections::BTreeMap,
+    fmt::write,
     net::SocketAddr,
     sync::{Arc, RwLock},
 };
@@ -39,7 +40,11 @@ impl Chat {
             ServerMessage::error_from(&cause)
         } else {
             writable_rooms.insert(room_name.clone(), Room::from(room_name));
-            ServerMessage::Ack
+
+            // must drop the writable lock for list_rooms to acquire a read lock
+            drop(writable_rooms);
+
+            self.list_rooms(0, None)
         }
     }
 

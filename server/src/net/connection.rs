@@ -63,6 +63,8 @@ impl Connection {
             ServerMessage::error_from("Could not parse that message")
         };
 
+        println!("Responding with {:?}", response);
+
         let serialized_response = serde_json::to_string(&response).unwrap();
 
         self.active_stream

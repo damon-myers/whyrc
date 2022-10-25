@@ -1,6 +1,6 @@
 use std::{
     io::{self, Stdout},
-    sync::mpsc::{self, Receiver},
+    sync::mpsc::{self, Receiver, TryRecvError},
 };
 
 use crossterm::{
@@ -8,6 +8,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use protocol::ServerMessage;
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -77,18 +78,6 @@ impl UI {
 
     pub fn render_loop(&mut self) -> Result<(), UIError> {
         loop {
-            // get inputs
-            match self.event_receiver.recv()? {
-                Event::Input(event) => match event.code {
-                    KeyCode::Char('q') => {
-                        self.reset_terminal()?;
-                        break;
-                    }
-                    _ => {}
-                },
-                Event::Tick => {}
-            }
-
             // render
             self.terminal.draw(|frame| {
                 let chunks = Layout::default()
@@ -100,13 +89,54 @@ impl UI {
                 frame.render_widget(menu_block, chunks[0]);
                 self.menu.render(frame, chunks[0]);
 
-                self.active_view.render(&mut self.state, frame, chunks[1]);
+                let render_result = self.active_view.render(&mut self.state, frame, chunks[1]);
 
-                // TODO: Each view should also have a render method that takes in chunks[1] and the frame and renders themselves
-                // let main_block = Block::default().borders(Borders::ALL);
-                // frame.render_widget(main_block, chunks[1]);
+                if render_result.is_err() {
+                    println!("{:?}", render_result);
+                }
             })?;
+
+            // handle inputs
+            match self.event_receiver.recv()? {
+                Event::Tick => {}
+                Event::Input(event) if event.code == KeyCode::Char('q') => {
+                    self.reset_terminal()?;
+                    break;
+                }
+                Event::Input(event) => {
+                    self.active_view
+                        .handle_key_event(event, &mut self.state, &mut self.net_handles)
+                }
+            }
+
+            match self.net_handles.receiver.try_recv() {
+                Ok(server_message) => {
+                    self.handle_server_message(server_message)?;
+                }
+                Err(error) => match error {
+                    TryRecvError::Disconnected => {
+                        self.reset_terminal()?;
+                        break;
+                    }
+                    TryRecvError::Empty => {} // do nothing with network actions this frame
+                },
+                //     ServerMessage::RoomList(room_list) => {
+                //         self.state.room_list = room_list;
+                //     }
+            }
         }
+
+        Ok(())
+    }
+
+    fn handle_server_message(&mut self, message: ServerMessage) -> Result<(), UIError> {
+        match message {
+            ServerMessage::Ack => todo!(),
+            ServerMessage::Pong => todo!(),
+            ServerMessage::LoginSuccessful => todo!(),
+            ServerMessage::RoomList(room_list) => self.state.room_list = room_list,
+            ServerMessage::Error { cause } => todo!(),
+        };
 
         Ok(())
     }

@@ -1,6 +1,8 @@
 use std::io::Stdout;
 
-use protocol::Room;
+use crossterm::event::{KeyCode, KeyEvent};
+use protocol::ClientMessage;
+use rand::{random, Rng};
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -33,6 +35,37 @@ impl View {
         }
     }
 
+    pub fn handle_key_event(
+        &self,
+        event: crossterm::event::KeyEvent,
+        state: &mut UiState,
+        net_handles: &mut crate::net::NetworkHandles,
+    ) {
+        match event.code {
+            KeyCode::Char('c') => {
+                // TODO: create a room by:
+                // - prompting the user for a name somehow
+                // - sending a message to the server to create the room
+                // - once the server responds with a room list, the state will be updated
+                let mut rng = rand::thread_rng();
+                let random_num: u64 = rng.gen();
+
+                net_handles
+                    .sender
+                    .send(ClientMessage::CreateRoom {
+                        name: format!("Test room #{}", random_num),
+                    })
+                    .expect("can send messages to server")
+            }
+            KeyCode::Char('d') => {
+                // TODO: delete the room under the cursor by
+                // - removing it from the state
+                // - sending a message to the server to delete the room
+            }
+            _ => {}
+        }
+    }
+
     fn render_room_list_view(
         &self,
         state: &mut UiState,
@@ -59,7 +92,7 @@ impl View {
 
         let footer_content = format!(
             "There are {} room(s) and {} user(s) in the server.",
-            state.rooms.len(),
+            state.room_list.room_names.len(),
             0 // TODO: Add users list to UiState
         );
         let footer = Paragraph::new(footer_content)
@@ -76,11 +109,12 @@ impl View {
 
     fn room_list(&self, state: &UiState) -> List {
         let list_items: Vec<ListItem> = state
-            .rooms
+            .room_list
+            .room_names
             .iter()
-            .map(|room| {
+            .map(|name| {
                 ListItem::new(Spans::from(vec![Span::styled(
-                    room.name.clone(),
+                    name.clone(),
                     Style::default(),
                 )]))
             })

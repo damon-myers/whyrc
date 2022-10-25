@@ -151,6 +151,8 @@ impl ServerConnection {
     }
 
     fn send_to_server(&mut self, message: ClientMessage) {
+        // println!("Sending {:?} to server", message);
+
         let serialized_response = serde_json::to_string(&message).unwrap();
 
         self.stream

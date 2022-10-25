@@ -35,6 +35,7 @@ impl Server {
         peer_addr: SocketAddr,
         message: ClientMessage,
     ) -> ServerMessage {
+        println!("Got message {:?}", message);
         match message {
             ClientMessage::Ping => ServerMessage::Pong,
             ClientMessage::CreateRoom { name } => self.chat.add_room(name),

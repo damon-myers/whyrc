@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+// TODO: Remove this, we don't need pagination
+// Instead just use a Vec<Room>?
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct RoomList {
-    room_names: Vec<String>,
-    page: usize,
-    room_count: usize,
+    pub room_names: Vec<String>,
+    pub page: usize,
+    pub room_count: usize,
 }
 
 impl RoomList {
