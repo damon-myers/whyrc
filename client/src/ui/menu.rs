@@ -19,6 +19,13 @@ impl MenuItem {
             MenuItem::Room { index, name } => format!("{}. {}", index + 1, name),
         }
     }
+
+    pub fn active_room_index(&self) -> Option<usize> {
+        match self {
+            MenuItem::RoomList => None,
+            MenuItem::Room { index, .. } => Some(index.to_owned()),
+        }
+    }
 }
 
 pub struct Menu {

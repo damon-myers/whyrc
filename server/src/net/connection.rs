@@ -3,7 +3,7 @@ use std::{
     net::{Shutdown, SocketAddr, TcpStream},
 };
 
-use whyrc_protocol::{ClientMessage, ServerMessage, TCP_BUFFER_SIZE};
+use protocol::{ClientMessage, ServerMessage, TCP_BUFFER_SIZE};
 
 use crate::net::Server;
 

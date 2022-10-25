@@ -59,9 +59,11 @@ fn main() -> Result<(), ClientError> {
 
     let args = Args::parse();
 
+    let ui_state = ui::UiState::from(&args.username);
+
     let net_handles = net::setup_network_threads(args)?;
 
-    let mut ui = ui::UI::from(event_receiver, net_handles);
+    let mut ui = ui::UI::from(ui_state, event_receiver, net_handles);
 
     ui.render_loop()?;
 

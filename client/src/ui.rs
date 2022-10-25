@@ -1,6 +1,6 @@
 use std::{
     io::{self, Stdout},
-    sync::mpsc::{self, Receiver, Sender},
+    sync::mpsc::{self, Receiver},
 };
 
 use crossterm::{
@@ -14,20 +14,25 @@ use tui::{
     widgets::{Block, Borders},
     Terminal,
 };
-use whyrc_protocol::{ClientMessage, ServerMessage};
 
 use crate::{events::Event, net::NetworkHandles};
 
-use self::menu::Menu;
+use self::{helper::default_block, menu::Menu, view::View};
+pub use state::*;
 
+mod helper;
 mod menu;
 mod room_list;
+mod state;
+mod view;
 
 pub struct UI {
+    state: UiState,
     menu: Menu,
     event_receiver: Receiver<Event<KeyEvent>>,
     net_handles: NetworkHandles,
     terminal: Terminal<CrosstermBackend<Stdout>>,
+    active_view: View,
 }
 
 #[derive(Debug)]
@@ -49,7 +54,11 @@ impl From<io::Error> for UIError {
 }
 
 impl UI {
-    pub fn from(event_receiver: Receiver<Event<KeyEvent>>, net_handles: NetworkHandles) -> Self {
+    pub fn from(
+        ui_state: UiState,
+        event_receiver: Receiver<Event<KeyEvent>>,
+        net_handles: NetworkHandles,
+    ) -> Self {
         enable_raw_mode().expect("can enable raw mode in terminal");
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen, EnableMouseCapture).expect("can set terminal modes");
@@ -57,10 +66,12 @@ impl UI {
         let terminal = Terminal::new(backend).expect("can create terminal with crossterm backend");
 
         UI {
+            state: ui_state,
             menu: Menu::default(),
             event_receiver,
             net_handles,
             terminal,
+            active_view: View::RoomList,
         }
     }
 
@@ -85,12 +96,15 @@ impl UI {
                     .constraints([Constraint::Length(3), Constraint::Min(6)].as_ref())
                     .split(frame.size());
 
-                let menu_block = Block::default().title("menu").borders(Borders::ALL);
+                let menu_block = default_block("Menu");
                 frame.render_widget(menu_block, chunks[0]);
                 self.menu.render(frame, chunks[0]);
 
-                let main_block = Block::default().borders(Borders::ALL);
-                frame.render_widget(main_block, chunks[1]);
+                self.active_view.render(&self.state, frame, chunks[1]);
+
+                // TODO: Each view should also have a render method that takes in chunks[1] and the frame and renders themselves
+                // let main_block = Block::default().borders(Borders::ALL);
+                // frame.render_widget(main_block, chunks[1]);
             })?;
         }
 

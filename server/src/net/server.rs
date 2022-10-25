@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use whyrc_protocol::{ClientMessage, ServerMessage};
+use protocol::{ClientMessage, ServerMessage};
 
 use crate::chat::Chat;
 

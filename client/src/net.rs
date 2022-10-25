@@ -7,7 +7,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-use whyrc_protocol::{ClientMessage, ServerMessage};
+use protocol::{ClientMessage, ServerMessage};
 
 use self::server_connection::*;
 use crate::Args;

@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::time::Duration;
 
-use whyrc_protocol::{ClientMessage, ServerMessage, TCP_BUFFER_SIZE};
+use protocol::{ClientMessage, ServerMessage, TCP_BUFFER_SIZE};
 
 use crate::net::error::*;
 

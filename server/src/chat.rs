@@ -4,11 +4,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-mod room;
-pub use room::*;
-use whyrc_protocol::{RoomList, ServerMessage};
-
-
+use protocol::{Room, RoomList, ServerMessage};
 
 pub type RoomMap = BTreeMap<String, Room>;
 

@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-pub use room_list::RoomList;
+mod data;
 
-mod room_list;
+pub use data::*;
 
 pub const TCP_BUFFER_SIZE: usize = 2048;
 

@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use whyrc_util as util;
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RoomList {
     room_names: Vec<String>,
