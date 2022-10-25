@@ -100,7 +100,7 @@ impl UI {
                 frame.render_widget(menu_block, chunks[0]);
                 self.menu.render(frame, chunks[0]);
 
-                self.active_view.render(&self.state, frame, chunks[1]);
+                self.active_view.render(&mut self.state, frame, chunks[1]);
 
                 // TODO: Each view should also have a render method that takes in chunks[1] and the frame and renders themselves
                 // let main_block = Block::default().borders(Borders::ALL);

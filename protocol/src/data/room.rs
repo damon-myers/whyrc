@@ -7,9 +7,9 @@ use crate::data::Message;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
-    name: String,
-    messages: BTreeMap<DateTime<Utc>, Message>,
-    active_users: BTreeMap<String, SocketAddr>,
+    pub name: String,
+    pub messages: BTreeMap<DateTime<Utc>, Message>,
+    pub active_users: BTreeMap<String, SocketAddr>,
 }
 
 impl Room {

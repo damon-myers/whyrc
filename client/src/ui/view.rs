@@ -1,11 +1,12 @@
 use std::io::Stdout;
 
+use protocol::Room;
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
     Frame,
 };
 
@@ -22,19 +23,19 @@ pub enum View {
 impl View {
     pub fn render(
         &self,
-        state: &UiState,
+        state: &mut UiState,
         frame: &mut Frame<CrosstermBackend<Stdout>>,
         area: Rect,
     ) -> Result<(), UIError> {
         match &self {
-            View::RoomList => self.render_room_list(state, frame, area),
-            View::RoomChat { name } => self.render_room(state, frame, area, name),
+            View::RoomList => self.render_room_list_view(state, frame, area),
+            View::RoomChat { name } => self.render_room_view(state, frame, area, name),
         }
     }
 
-    fn render_room_list(
+    fn render_room_list_view(
         &self,
-        state: &UiState,
+        state: &mut UiState,
         frame: &mut Frame<CrosstermBackend<Stdout>>,
         area: Rect,
     ) -> Result<(), UIError> {
@@ -54,7 +55,7 @@ impl View {
 
         let help_content = help_content();
 
-        let room_list = default_block("Room List");
+        let room_list = self.room_list(state);
 
         let footer_content = format!(
             "There are {} room(s) and {} user(s) in the server.",
@@ -68,12 +69,34 @@ impl View {
 
         frame.render_widget(help_content, room_list_page_chunks[0]);
         frame.render_widget(footer, room_list_chunks[0]);
-        frame.render_widget(room_list, room_list_chunks[1]);
+        frame.render_stateful_widget(room_list, room_list_chunks[1], &mut state.room_list_state);
 
         Ok(())
     }
 
-    fn render_room(
+    fn room_list(&self, state: &UiState) -> List {
+        let list_items: Vec<ListItem> = state
+            .rooms
+            .iter()
+            .map(|room| {
+                ListItem::new(Spans::from(vec![Span::styled(
+                    room.name.clone(),
+                    Style::default(),
+                )]))
+            })
+            .collect();
+
+        List::new(list_items)
+            .block(default_block("Room List"))
+            .highlight_style(
+                Style::default()
+                    .bg(Color::Yellow)
+                    .fg(Color::Black)
+                    .add_modifier(Modifier::BOLD),
+            )
+    }
+
+    fn render_room_view(
         &self,
         state: &UiState,
         frame: &mut Frame<CrosstermBackend<Stdout>>,
