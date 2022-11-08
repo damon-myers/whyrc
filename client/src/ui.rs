@@ -97,16 +97,22 @@ impl UI {
             })?;
 
             // handle inputs
-            match self.event_receiver.recv()? {
-                Event::Tick => {}
-                Event::Input(event) if event.code == KeyCode::Char('q') => {
+            match self.event_receiver.try_recv() {
+                Ok(Event::Input(event)) if event.code == KeyCode::Char('q') => {
                     self.reset_terminal()?;
                     break;
                 }
-                Event::Input(event) => {
+                Ok(Event::Input(event)) => {
                     self.active_view
                         .handle_key_event(event, &mut self.state, &mut self.net_handles)
                 }
+                Err(error) => match error {
+                    TryRecvError::Disconnected => {
+                        self.reset_terminal()?;
+                        break;
+                    }
+                    TryRecvError::Empty => {} // do nothing with network actions this frame
+                },
             }
 
             match self.net_handles.receiver.try_recv() {
@@ -120,9 +126,6 @@ impl UI {
                     }
                     TryRecvError::Empty => {} // do nothing with network actions this frame
                 },
-                //     ServerMessage::RoomList(room_list) => {
-                //         self.state.room_list = room_list;
-                //     }
             }
         }
 
@@ -134,7 +137,23 @@ impl UI {
             ServerMessage::Ack => todo!(),
             ServerMessage::Pong => todo!(),
             ServerMessage::LoginSuccessful => todo!(),
-            ServerMessage::RoomList(room_list) => self.state.room_list = room_list,
+            ServerMessage::RoomList(room_list_page) => {
+                if self.state.room_name_list.len() != room_list_page.total_room_count {
+                    // if the number of rooms changed since our last update, eliminate everything and replace it
+                    self.state.room_name_list =
+                        vec![String::from(""); room_list_page.total_room_count];
+                }
+
+                let page_size = room_list_page.room_names.len();
+                let page_start_index = room_list_page.page * page_size;
+                let page_end_index = std::cmp::min(
+                    page_start_index + page_size,
+                    room_list_page.total_room_count,
+                );
+
+                self.state.room_name_list[page_start_index..page_end_index]
+                    .clone_from_slice(&room_list_page.room_names);
+            }
             ServerMessage::Error { cause } => todo!(),
         };
 

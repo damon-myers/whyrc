@@ -34,17 +34,15 @@ impl Server {
         &mut self,
         peer_addr: SocketAddr,
         message: ClientMessage,
-    ) -> ServerMessage {
+    ) -> Vec<ServerMessage> {
         println!("Got message {:?}", message);
         match message {
-            ClientMessage::Ping => ServerMessage::Pong,
+            ClientMessage::Ping => vec![ServerMessage::Pong],
             ClientMessage::CreateRoom { name } => self.chat.add_room(name),
-            ClientMessage::DeleteRoom { name } => self.chat.remove_room(name),
-            ClientMessage::ListRooms { page, page_size } => {
-                self.chat.list_rooms(page, Some(page_size))
-            }
+            ClientMessage::DeleteRoom { name } => vec![self.chat.remove_room(name)],
+            ClientMessage::ListAllRooms { page_size } => self.chat.list_all_rooms(Some(page_size)),
             ClientMessage::Login { username, password } => {
-                self.login_user(peer_addr, username, password)
+                vec![self.login_user(peer_addr, username, password)]
             }
         }
     }

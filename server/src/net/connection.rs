@@ -52,7 +52,8 @@ impl Connection {
     fn handle_message(&mut self, message_str: &str) {
         let message: Result<ClientMessage, serde_json::Error> = serde_json::from_str(message_str);
 
-        let response: ServerMessage = if let Ok(message) = message {
+        // execute_command may return multiple messages if we need to paginate, send multiple responses, etc
+        let responses: Vec<ServerMessage> = if let Ok(message) = message {
             self.server.execute_command(self.peer_addr, message)
         } else {
             println!(
@@ -60,16 +61,19 @@ impl Connection {
                 self.active_stream.peer_addr().unwrap()
             );
 
-            ServerMessage::error_from("Could not parse that message")
+            vec![ServerMessage::error_from("Could not parse that message")]
         };
 
-        println!("Responding with {:?}", response);
+        for response in responses {
+            println!("Responding with {:?}", response);
 
-        let serialized_response = serde_json::to_string(&response).unwrap();
+            let serialized_response = serde_json::to_string(&response).unwrap();
 
-        self.active_stream
-            .write_all(serialized_response.as_bytes())
-            .unwrap();
+            self.active_stream
+                .write_all(serialized_response.as_bytes())
+                .unwrap();
+        }
+
         self.active_stream.flush().unwrap();
     }
 }

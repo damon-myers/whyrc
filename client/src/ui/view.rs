@@ -92,7 +92,7 @@ impl View {
 
         let footer_content = format!(
             "There are {} room(s) and {} user(s) in the server.",
-            state.room_list.room_names.len(),
+            state.room_name_list.len(),
             0 // TODO: Add users list to UiState
         );
         let footer = Paragraph::new(footer_content)
@@ -109,8 +109,7 @@ impl View {
 
     fn room_list(&self, state: &UiState) -> List {
         let list_items: Vec<ListItem> = state
-            .room_list
-            .room_names
+            .room_name_list
             .iter()
             .map(|name| {
                 ListItem::new(Spans::from(vec![Span::styled(

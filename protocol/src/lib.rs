@@ -11,7 +11,7 @@ pub enum ClientMessage {
     Ping,
     CreateRoom { name: String },
     DeleteRoom { name: String },
-    ListRooms { page: usize, page_size: usize },
+    ListAllRooms { page_size: usize },
     Login { username: String, password: String },
 }
 
@@ -20,7 +20,7 @@ pub enum ServerMessage {
     Ack,
     Pong,
     LoginSuccessful,
-    RoomList(RoomList),
+    RoomList(RoomListPage),
     Error { cause: String },
 }
 
