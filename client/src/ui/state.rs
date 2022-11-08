@@ -1,12 +1,14 @@
-use protocol::{Room, RoomListPage};
+use protocol::Room;
 use tui::widgets::ListState;
+
+use self::room_list_state::RoomListState;
+
+mod room_list_state;
 
 pub struct UiState {
     username: String,
     pub room_data: Vec<Room>,
-    pub room_name_list: Vec<String>,
-    pub room_total_count: usize,
-    pub room_list_state: ListState,
+    pub room_list: RoomListState,
 }
 
 impl UiState {
@@ -17,9 +19,12 @@ impl UiState {
         UiState {
             username: String::from(username),
             room_data: Vec::new(),
-            room_name_list: Vec::new(),
-            room_total_count: 0,
-            room_list_state,
+            room_list: RoomListState {
+                is_creating_room: false,
+                room_names: Vec::new(),
+                room_total_count: 0,
+                room_list_state,
+            },
         }
     }
 

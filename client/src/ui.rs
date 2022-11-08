@@ -18,12 +18,15 @@ use tui::{
 
 use crate::{events::Event, net::NetworkHandles};
 
-use self::{helper::default_block, menu::Menu, view::View};
+use self::{
+    helper::default_block,
+    menu::Menu,
+    view::{RoomListView, View},
+};
 pub use state::*;
 
 mod helper;
 mod menu;
-mod room_list;
 mod state;
 mod view;
 
@@ -33,7 +36,7 @@ pub struct UI {
     event_receiver: Receiver<Event<KeyEvent>>,
     net_handles: NetworkHandles,
     terminal: Terminal<CrosstermBackend<Stdout>>,
-    active_view: View,
+    active_view: Box<dyn View>,
 }
 
 #[derive(Debug)]
@@ -72,7 +75,7 @@ impl UI {
             event_receiver,
             net_handles,
             terminal,
-            active_view: View::RoomList,
+            active_view: Box::new(RoomListView::new()),
         }
     }
 
@@ -98,13 +101,15 @@ impl UI {
 
             // handle inputs
             match self.event_receiver.try_recv() {
+                Ok(Event::Input(event))
+                    if self.active_view.will_handle_key_event(event, &self.state) =>
+                {
+                    self.active_view
+                        .handle_key_event(event, &mut self.state, &mut self.net_handles)
+                }
                 Ok(Event::Input(event)) if event.code == KeyCode::Char('q') => {
                     self.reset_terminal()?;
                     break;
-                }
-                Ok(Event::Input(event)) => {
-                    self.active_view
-                        .handle_key_event(event, &mut self.state, &mut self.net_handles)
                 }
                 Err(error) => match error {
                     TryRecvError::Disconnected => {
@@ -113,6 +118,7 @@ impl UI {
                     }
                     TryRecvError::Empty => {} // do nothing with network actions this frame
                 },
+                Ok(_) => {}
             }
 
             match self.net_handles.receiver.try_recv() {
@@ -138,9 +144,9 @@ impl UI {
             ServerMessage::Pong => todo!(),
             ServerMessage::LoginSuccessful => todo!(),
             ServerMessage::RoomList(room_list_page) => {
-                if self.state.room_name_list.len() != room_list_page.total_room_count {
+                if self.state.room_list.room_names.len() != room_list_page.total_room_count {
                     // if the number of rooms changed since our last update, eliminate everything and replace it
-                    self.state.room_name_list =
+                    self.state.room_list.room_names =
                         vec![String::from(""); room_list_page.total_room_count];
                 }
 
@@ -151,7 +157,7 @@ impl UI {
                     room_list_page.total_room_count,
                 );
 
-                self.state.room_name_list[page_start_index..page_end_index]
+                self.state.room_list.room_names[page_start_index..page_end_index]
                     .clone_from_slice(&room_list_page.room_names);
             }
             ServerMessage::Error { cause } => todo!(),

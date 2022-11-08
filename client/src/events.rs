@@ -2,8 +2,6 @@ use std::{sync::mpsc, thread};
 
 use crossterm::event::{self, Event as CEvent, KeyEvent};
 
-const EVENT_TICK_RATE_MS: u64 = 200;
-
 pub enum Event<I> {
     Input(I),
 }
