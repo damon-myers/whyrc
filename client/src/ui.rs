@@ -8,7 +8,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use protocol::ServerMessage;
+use protocol::{ClientMessage, ServerMessage};
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -80,6 +80,12 @@ impl UI {
     }
 
     pub fn render_loop(&mut self) -> Result<(), UIError> {
+        // request the room list before starting the render loop
+        self.net_handles
+            .sender
+            .send(ClientMessage::ListAllRooms { page_size: 40 })
+            .expect("can request room list");
+
         loop {
             // render
             self.terminal.draw(|frame| {
