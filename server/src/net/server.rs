@@ -39,7 +39,7 @@ impl Server {
         match message {
             ClientMessage::Ping => vec![ServerMessage::Pong],
             ClientMessage::CreateRoom { name } => self.chat.add_room(name),
-            ClientMessage::DeleteRoom { name } => vec![self.chat.remove_room(name)],
+            ClientMessage::DeleteRoom { name } => self.chat.remove_room(name),
             ClientMessage::ListAllRooms { page_size } => self.chat.list_all_rooms(Some(page_size)),
             ClientMessage::Login { username, password } => {
                 vec![self.login_user(peer_addr, username, password)]

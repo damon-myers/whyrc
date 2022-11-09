@@ -55,18 +55,21 @@ impl Chat {
         }
     }
 
-    pub fn remove_room(&self, room_name: String) -> ServerMessage {
+    pub fn remove_room(&self, room_name: String) -> Vec<ServerMessage> {
         let mut writable_rooms = match self.rooms.write() {
             Ok(lock) => lock,
-            Err(_) => return ServerMessage::error_from("Failed to get rooms lock"),
+            Err(_) => return vec![ServerMessage::error_from("Failed to get rooms lock")],
         };
 
         if !writable_rooms.contains_key(&room_name) {
             let cause = format!("Room with name {} doesn't exist", room_name);
-            ServerMessage::error_from(&cause)
+            vec![ServerMessage::error_from(&cause)]
         } else {
             writable_rooms.remove(&room_name);
-            ServerMessage::Ack
+
+            drop(writable_rooms);
+
+            self.list_all_rooms(None)
         }
     }
 
@@ -79,6 +82,8 @@ impl Chat {
         };
 
         let total_pages = ((readable_rooms.len() as f64) / (page_size as f64)).ceil() as usize;
+
+        let total_pages = std::cmp::max(total_pages, 1);
 
         let room_names = readable_rooms.keys().collect();
 

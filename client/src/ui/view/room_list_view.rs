@@ -144,9 +144,50 @@ impl View for RoomListView<'_> {
             match event.code {
                 KeyCode::Char('c') => state.room_list.is_creating_room = true,
                 KeyCode::Char('d') => {
-                    // TODO: delete the room under the cursor by
-                    // - removing it from the state
-                    // - sending a message to the server to delete the room
+                    if state.room_list.room_names.is_empty() {
+                        return;
+                    }
+
+                    let current = state
+                        .room_list
+                        .room_list_state
+                        .selected()
+                        .unwrap_or_default();
+
+                    // guaranteed to exist because room_list_state stays within range of room_names indices
+                    let current_room_name = &state.room_list.room_names[current];
+
+                    net_handles
+                        .sender
+                        .send(ClientMessage::DeleteRoom {
+                            name: current_room_name.to_string(),
+                        })
+                        .expect("can send messages to server");
+                }
+                KeyCode::Char('j') | KeyCode::Down => {
+                    let current = state
+                        .room_list
+                        .room_list_state
+                        .selected()
+                        .unwrap_or_default();
+
+                    let new = std::cmp::min(
+                        current + 1,
+                        state.room_list.room_total_count.saturating_sub(1),
+                    );
+
+                    state.room_list.room_list_state.select(Some(new));
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    let current = state
+                        .room_list
+                        .room_list_state
+                        .selected()
+                        .unwrap_or_default();
+
+                    let new = current.saturating_sub(1);
+
+                    state.room_list.room_list_state.select(Some(new));
                 }
                 _ => {}
             }
@@ -157,15 +198,13 @@ impl View for RoomListView<'_> {
         if state.room_list.is_creating_room {
             true
         } else {
-            match (event.code) {
+            match event.code {
                 KeyCode::Char('c') => true,
                 KeyCode::Char('d') => true,
+                KeyCode::Char('j') | KeyCode::Down => true,
+                KeyCode::Char('k') | KeyCode::Up => true,
                 _ => false,
             }
         }
     }
-}
-
-pub struct RoomChatView {
-    name: String,
 }

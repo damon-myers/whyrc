@@ -148,6 +148,8 @@ impl UI {
                     // if the number of rooms changed since our last update, eliminate everything and replace it
                     self.state.room_list.room_names =
                         vec![String::from(""); room_list_page.total_room_count];
+
+                    self.state.room_list.room_total_count = room_list_page.total_room_count;
                 }
 
                 let page_size = room_list_page.room_names.len();
